@@ -4,6 +4,10 @@ authors = []
 description = ""
 telemetry = false
 requirements = []
+[contracts.mocha-token]
+path = "contracts/mocha-token.clar"
+depends_on = []
+
 [contracts.recipe-manager]
 path = "contracts/recipe-manager.clar"
 depends_on = []
