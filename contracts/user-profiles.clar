@@ -33,6 +33,18 @@
   (ok true)
 )
 
+(define-public (increment-recipes-created (user principal))
+  (let ((profile (unwrap! (map-get? profiles {user: user}) (err err-not-found))))
+    (map-set profiles
+      { user: user }
+      (merge profile {
+        recipes-created: (+ (get recipes-created profile) u1)
+      })
+    )
+    (ok true)
+  )
+)
+
 (define-public (follow-user (user principal))
   (map-set following
     { follower: tx-sender, following: user }
@@ -47,4 +59,8 @@
     )
     (ok true)
   )
+)
+
+(define-read-only (get-profile (user principal))
+  (ok (unwrap! (map-get? profiles {user: user}) (err err-not-found)))
 )
