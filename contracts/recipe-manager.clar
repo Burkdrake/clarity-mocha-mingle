@@ -6,6 +6,8 @@
 (define-constant err-already-exists (err u101))
 (define-constant err-recipe-not-found (err u102))
 (define-constant err-invalid-rating (err u103))
+(define-constant err-invalid-tip (err u104))
+(define-constant minimum-tip u1)
 
 ;; Data Types
 (define-map recipes
@@ -23,6 +25,9 @@
 
 (define-data-var next-recipe-id uint u1)
 
+;; Events
+(define-data-var recipe-created-event (string-ascii 50) "recipe-created")
+
 ;; Public Functions
 (define-public (create-recipe (title (string-ascii 100)) (ingredients (string-utf8 1000)) (instructions (string-utf8 2000)))
   (let ((recipe-id (var-get next-recipe-id)))
@@ -39,6 +44,8 @@
       }
     )
     (var-set next-recipe-id (+ recipe-id u1))
+    (try! (contract-call? .user-profiles increment-recipes-created tx-sender))
+    (print (var-get recipe-created-event))
     (ok recipe-id)
   )
 )
@@ -50,7 +57,7 @@
       (map-set recipes
         { id: recipe-id }
         (merge recipe { 
-          total-rating: (+ (get total-rating recipe) rating),
+          total-rating: (+ (get total-rating recipe) (* rating u100)),
           reviews: (+ (get reviews recipe) u1)
         })
       )
@@ -60,15 +67,19 @@
 )
 
 (define-public (tip-recipe (recipe-id uint) (amount uint))
-  (let ((recipe (unwrap! (map-get? recipes {id: recipe-id}) (err err-recipe-not-found))))
-    (try! (contract-call? .mocha-token tip-creator (get creator recipe) amount))
-    (map-set recipes
-      { id: recipe-id }
-      (merge recipe {
-        tips-received: (+ (get tips-received recipe) amount)
-      })
+  (begin
+    (asserts! (>= amount minimum-tip) (err err-invalid-tip))
+    (let ((recipe (unwrap! (map-get? recipes {id: recipe-id}) (err err-recipe-not-found))))
+      (try! (contract-call? .user-profiles get-profile (get creator recipe)))
+      (try! (contract-call? .mocha-token tip-creator (get creator recipe) amount))
+      (map-set recipes
+        { id: recipe-id }
+        (merge recipe {
+          tips-received: (+ (get tips-received recipe) amount)
+        })
+      )
+      (ok true)
     )
-    (ok true)
   )
 )
 
